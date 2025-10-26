@@ -1,0 +1,170 @@
+[
+  {
+    "testCaseId": "183cb5fa8b166010d5f1aec5d8a07a2c",
+    "uuid": "05921a5e-9453-4992-a970-a37eb4c84347",
+    "name": "Failover when primary carrier unavailable",
+    "description": "  Verify end-to-end shipment creation and delivery processes for different carriers and shipment types.",
+    "status": "passed",
+    "statusDetails": {
+      "message": null,
+      "trace": null
+    },
+    "steps": [
+      {
+        "name": "Given the system is available",
+        "status": "passed",
+        "substeps": []
+      },
+      {
+        "name": "Given a customer places an order with id \"ORD-2001\" and destination \"Chicago, IL\"",
+        "status": "passed",
+        "substeps": []
+      },
+      {
+        "name": "And the primary carrier \"PrimaryCo\" is unavailable",
+        "status": "passed",
+        "substeps": []
+      },
+      {
+        "name": "When the system reassigns the shipment to a backup carrier \"BackupCo\"",
+        "status": "passed",
+        "substeps": []
+      },
+      {
+        "name": "Then the shipment should be assigned to \"BackupCo\"",
+        "status": "passed",
+        "substeps": []
+      }
+    ]
+  },
+  {
+    "testCaseId": "fdd6953bf938a1856779babfb0f99051",
+    "uuid": "c92d5a96-ce66-43b6-8b27-d9971faa0fae",
+    "name": "Create and complete a shipment",
+    "description": "  Verify end-to-end shipment creation and delivery processes for different carriers and shipment types.",
+    "status": "failed",
+    "statusDetails": {
+      "message": "expected: <In Transit> but was: <ALLOCATED>",
+      "trace": "org.opentest4j.AssertionFailedError: expected: <In Transit> but was: <ALLOCATED>\n\tat org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)\n\tat org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)\n\tat org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:197)\n\tat org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:182)\n\tat org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:177)\n\tat org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1145)\n\tat com.example.softwareQuality.automation.ShipmentSteps.shipmentShouldBeMarked(ShipmentSteps.java:107)\n\tat ✽.the shipment for order \"ORD-1001\" should be marked as \"In Transit\"(file:///Users/vipulkolte/projects/SoftwareQuality/src/test/resources/features/shipment_management.feature:12)\n"
+    },
+    "steps": [
+      {
+        "name": "📦 Check pre-requisite",
+        "status": "passed",
+        "substeps": [
+          {
+            "name": "Given the system is available",
+            "status": "passed"
+          }
+        ]
+      },
+      {
+        "name": "🧾 Parcel Registration",
+        "status": "passed",
+        "substeps": [
+          {
+            "name": "Given a customer places an order with id \"ORD-1001\" and destination \"New York, NY\"",
+            "status": "passed"
+          }
+        ]
+      },
+      {
+        "name": "🚚📍 Parcel pickup",
+        "status": "failed",
+        "substeps": [
+          {
+            "name": "And the system allocates a shipment with carrier \"FastShip\" and service \"Express\"",
+            "status": "passed"
+          },
+          {
+            "name": "Then the shipment for order \"ORD-1001\" should be marked as \"In Transit\"",
+            "status": "failed"
+          },
+          {
+            "name": "When the carrier picks up the shipment with tracking \"TRK1001\"",
+            "status": "skipped"
+          }
+        ]
+      },
+      {
+        "name": "🚚➡️🏬 Parcel In Transit",
+        "status": "skipped",
+        "substeps": [
+          {
+            "name": "And the carrier updates the shipment status to \"IN_TRANSIT\"",
+            "status": "skipped"
+          },
+          {
+            "name": "Then the shipment for order \"ORD-1001\" should be marked as \"In Transit\"",
+            "status": "skipped"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "testCaseId": "fdd6953bf938a1856779babfb0f99051",
+    "uuid": "b11532ef-1b8d-4509-b8a3-404c5a2c8526",
+    "name": "Create and complete a shipment",
+    "description": "  Verify end-to-end shipment creation and delivery processes for different carriers and shipment types.",
+    "status": "failed",
+    "statusDetails": {
+      "message": "expected: <Delivered> but was: <ALLOCATED>",
+      "trace": "org.opentest4j.AssertionFailedError: expected: <Delivered> but was: <ALLOCATED>\n\tat org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)\n\tat org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)\n\tat org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:197)\n\tat org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:182)\n\tat org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:177)\n\tat org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:1145)\n\tat com.example.softwareQuality.automation.ShipmentSteps.shipmentShouldBeMarked(ShipmentSteps.java:107)\n\tat ✽.the shipment for order \"ORD-1002\" should be marked as \"Delivered\"(file:///Users/vipulkolte/projects/SoftwareQuality/src/test/resources/features/shipment_management.feature:12)\n"
+    },
+    "steps": [
+      {
+        "name": "📦 Check pre-requisite",
+        "status": "passed",
+        "substeps": [
+          {
+            "name": "Given the system is available",
+            "status": "passed"
+          }
+        ]
+      },
+      {
+        "name": "🧾 Parcel Registration",
+        "status": "passed",
+        "substeps": [
+          {
+            "name": "Given a customer places an order with id \"ORD-1002\" and destination \"Los Angeles, CA\"",
+            "status": "passed"
+          }
+        ]
+      },
+      {
+        "name": "🚚📍 Parcel pickup",
+        "status": "failed",
+        "substeps": [
+          {
+            "name": "And the system allocates a shipment with carrier \"National\" and service \"Standard\"",
+            "status": "passed"
+          },
+          {
+            "name": "Then the shipment for order \"ORD-1002\" should be marked as \"Delivered\"",
+            "status": "failed"
+          },
+          {
+            "name": "When the carrier picks up the shipment with tracking \"TRK1002\"",
+            "status": "skipped"
+          }
+        ]
+      },
+      {
+        "name": "🚚➡️🏬 Parcel In Transit",
+        "status": "skipped",
+        "substeps": [
+          {
+            "name": "And the carrier updates the shipment status to \"DELIVERED\"",
+            "status": "skipped"
+          },
+          {
+            "name": "Then the shipment for order \"ORD-1002\" should be marked as \"Delivered\"",
+            "status": "skipped"
+          }
+        ]
+      }
+    ]
+  }
+]

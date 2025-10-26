@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Allure Results — Dynamic Dashboard</title>
+
+  <style>
+        /* match demo.html exactly for glassmorphic visuals and font sizes */
+        body {
+          font-family: "Poppins", sans-serif;
+          margin: 0; padding: 0;
+          background: radial-gradient(circle at 20% 30%, rgba(0,0,0,0.5), rgba(10, 10, 10, 0.95)), url(https://c7.alamy.com/comp/PB25GN/aerial-view-of-busan-new-port-of-south-korea-container-ship-in-import-export-and-business-logistic-in-busan-new-port-PB25GN.jpg) no-repeat center center fixed;
+          background-size: cover;
+          color: #fff;
+        }
+
+        header {
+          text-align: center;
+          padding: 40px 20px;
+          background: rgba(255,255,255,0.05);
+          border-bottom: 1px solid rgba(255,255,255,0.2);
+          box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+          backdrop-filter: blur(22px);
+        }
+        header h1 {
+          font-size: 2.2rem;
+          font-weight: 700;
+          margin: 0;
+          color: #fff;
+          text-shadow: 0 0 20px rgba(255,255,255,0.25);
+        }
+        header p {
+          margin-top: 8px;
+          font-weight: 400;
+          color: rgba(255,255,255,0.75);
+        }
+
+        section, .section{
+          margin: 35px auto;
+          width: 88%;
+          border-radius: 22px;
+          background: rgba(255,255,255,0.08);
+          box-shadow: 0 8px 35px rgba(0,0,0,0.45), inset 0 0 20px rgba(255,255,255,0.06);
+          backdrop-filter: blur(30px) saturate(160%);
+          border: 1px solid rgba(255,255,255,0.25);
+          transition: all 0.4s ease-in-out;
+        }
+
+        .section-header {
+          font-weight: 600; font-size: 1.25rem;
+          background: rgba(255,255,255,0.05); border-radius: 20px 20px 0 0;
+          user-select: none; letter-spacing: 0.5px;
+          padding: 14px 18px;
+        }
+
+        .section-content { padding: 20px 0 30px 0; }
+
+        .status-legend {
+          display: flex; align-items: center; gap: 15px;
+          margin: 10px 20px; padding: 10px 14px;
+          background: rgba(255,255,255,0.05); border-radius: 14px; border: 1px solid rgba(255,255,255,0.2);
+          backdrop-filter: blur(20px); box-shadow: 0 6px 15px rgba(0,0,0,0.35);
+        }
+        .status-dot { width:16px; height:16px; border-radius:50%; box-shadow:0 0 12px rgba(255,255,255,0.4);}
+        .status-dot.passed { background: #2ecc71; }
+        .status-dot.failed { background: #e74c3c; }
+        .status-dot.skipped { background: #f1c40f; }
+        .status-dot.notexecuted { background: #95a5a6; }
+        .status-label { font-size:14px; color: rgba(255,255,255,0.9); }
+
+        .mermaid {
+          padding: 25px;
+          margin: 0 15px;
+          border-radius: 20px;
+          background: rgba(255,255,255,0.07);
+          border: 1px solid rgba(255,255,255,0.25);
+          box-shadow: 0 8px 35px rgba(0,0,0,0.45);
+          backdrop-filter: blur(35px) saturate(150%);
+          transform-style: preserve-3d;
+        }
+
+        .node rect {
+          rx: 14px; ry: 14px;
+          fill: rgba(255,255,255,0.08) !important;
+          stroke-width: 2px !important;
+          stroke: rgba(255,255,255,0.15) !important;
+          backdrop-filter: blur(18px) saturate(150%) !important;
+          filter: drop-shadow(0 6px 20px rgba(0,0,0,0.3)) !important;
+          transition: all 0.3s ease !important;
+        }
+        .node.passed rect { fill: rgba(46,204,113,0.18) !important; stroke: rgba(46,204,113,0.55) !important; }
+        .node.failed rect { fill: rgba(231,76,60,0.18) !important; stroke: rgba(231,76,60,0.55) !important; }
+        .node.skipped rect { fill: rgba(241,196,15,0.18) !important; stroke: rgba(241,196,15,0.55) !important; }
+        .node.notexecuted rect { fill: rgba(149,165,166,0.18) !important; stroke: rgba(149,165,166,0.55) !important; }
+
+        .node text { fill:#fff; font-size:14px; text-shadow:0 0 3px rgba(0,0,0,0.5); }
+
+        .nodeLabel span.substep { display: block; font-size: 12px; color: rgba(255,255,255,0.85); margin-left: 2px; }
+
+        .edgePath path { stroke-width: 2.5px; stroke: url(#gradientStroke); filter: drop-shadow(0 3px 12px rgba(0,0,0,0.5)); }
+
+        footer {
+          text-align:center; padding:25px; font-size:14px;
+          background: rgba(255,255,255,0.05); backdrop-filter: blur(15px);
+          color: rgba(255,255,255,0.9); border-top:1px solid rgba(255,255,255,0.2);
+          box-shadow: 0 -6px 25px rgba(0,0,0,0.5);
+        }
+  </style>
+ </head>
+ <body>
+  <!-- svg defs moved here from head to satisfy HTML spec -->
+  <svg style="height:0;width:0;position:absolute;">
+    <defs>
+      <linearGradient id="gradientStroke" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#4bc0c8"/>
+        <stop offset="100%" stop-color="#2ecc71"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <header>
+    <h1>📦 Allure Results — Glassmorphic Dashboard</h1>
+    <p>Automatically mapped from build/allure-results/allure-results-summary.json</p>
+  </header>
+
+  <div class="page">
+    <div class="section">
+      <div class="section-header">Results Summary</div>
+      <div class="section-content">
+        <div class="status-legend" id="legend">
+          <div class="status-item"><span class="status-dot passed"></span><span class="status-label">Passed</span><span id="count-passed" class="status-count">0</span></div>
+          <div class="status-item"><span class="status-dot failed"></span><span class="status-label">Failed</span><span id="count-failed" class="status-count">0</span></div>
+          <div class="status-item"><span class="status-dot skipped"></span><span class="status-label">Skipped</span><span id="count-skipped" class="status-count">0</span></div>
+          <div class="status-item"><span class="status-dot notexecuted"></span><span class="status-label">Not Executed</span><span id="count-notexecuted" class="status-count">0</span></div>
+        </div>
+
+        <div id="diagram">Loading diagrams...</div>
+      </div>
+    </div>
+
+    <footer>&copy; Allure Dashboard</footer>
+   </div>
+
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+
+    // mermaid global initialization
+    mermaid.initialize({ startOnLoad: false, theme: 'dark', themeVariables: { fontFamily: 'Poppins, Inter, Arial, sans-serif' }, flowchart: { curve: 'basis', htmlLabels: true } });
+
+    // helpers
+    const escapeHtml = unsafe => { if(unsafe===0) return '0'; if(!unsafe) return ''; return String(unsafe).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); };
+    const statusClass = s => { if(!s) return 'notexecuted'; const st = String(s).toLowerCase(); if(st==='passed') return 'passed'; if(st==='failed') return 'failed'; if(st==='skipped') return 'skipped'; return 'notexecuted'; };
+    const statusSymbol = s => { if(!s) return '⏸️'; const st = String(s).toLowerCase(); if(st==='passed') return '✅'; if(st==='failed') return '❌'; if(st==='skipped') return '⏳'; return '⏸️'; };
+
+    async function build() {
+      try {
+        const res = await fetch('../build/allure-results/allure-results-summary.json', { cache: 'no-store' });
+        if(!res.ok) throw new Error('Failed to fetch summary: ' + res.status);
+        const data = await res.json();
+
+        // update counts
+        const counts = { passed:0, failed:0, skipped:0, notexecuted:0 };
+        data.forEach(t => counts[statusClass(t.status)] = (counts[statusClass(t.status)]||0) + 1);
+        document.getElementById('count-passed').textContent = counts.passed;
+        document.getElementById('count-failed').textContent = counts.failed;
+        document.getElementById('count-skipped').textContent = counts.skipped;
+        document.getElementById('count-notexecuted').textContent = counts.notexecuted;
+
+        // container for diagrams
+        const diagramContainer = document.getElementById('diagram');
+        diagramContainer.innerHTML = '';
+
+        // render each test as its own mermaid pane
+        data.forEach((t, tidx) => {
+          // pane wrapper
+          const pane = document.createElement('div'); pane.style.marginBottom = '18px'; pane.className = 'section';
+          const paneHeader = document.createElement('div'); paneHeader.className = 'section-header';
+          const badgeCls = statusClass(t.status)==='passed' ? 'badge-passed' : (statusClass(t.status)==='failed' ? 'badge-failed' : 'badge-skipped');
+          paneHeader.innerHTML = `${escapeHtml(t.name)} <span style='float:right' class='status-badge ${badgeCls}'>${escapeHtml(t.status||'notexecuted')}</span>`;
+          pane.appendChild(paneHeader);
+          const paneContent = document.createElement('div'); paneContent.className = 'section-content';
+
+          // mermaid div for this test
+          const mdiv = document.createElement('div'); mdiv.className = 'mermaid'; mdiv.id = 'diagram-' + tidx;
+
+          // Build mermaid graph for this test: each step -> node, substeps as lines
+          let graph = 'flowchart LR\n';
+          graph += `classDef passed fill:#e6ffed,stroke:#2ecc71,stroke-width:1px,color:#0b6623;\n`;
+          graph += `classDef failed fill:#ffecec,stroke:#e74c3c,stroke-width:1px,color:#8b1d19;\n`;
+          graph += `classDef skipped fill:#fff9e6,stroke:#f1c40f,stroke-width:1px,color:#856404;\n`;
+          graph += `classDef notexecuted fill:#f0f0f0,stroke:#95a5a6,stroke-width:1px,color:#333;\n`;
+
+          const steps = Array.isArray(t.steps) ? t.steps : [];
+          if(steps.length === 0) {
+            // create a single node representing the test itself
+            const id = `N${tidx}_0`;
+            const label = `<div class='nodeLabel'><strong>${escapeHtml(t.name||('Test '+tidx))}</strong></div>`;
+            graph += `${id}["${label.replace(/"/g,'&quot;')}"]:::${statusClass(t.status)}\n`;
+          } else {
+            steps.forEach((s, sidx) => {
+              const id = `N${tidx}_${sidx}`;
+              let label = `<div class='nodeLabel'><strong>${escapeHtml(s.name||('Step '+sidx))}</strong>`;
+              if(Array.isArray(s.substeps) && s.substeps.length){
+                s.substeps.forEach(ss => {
+                  label += `<div class='substep'>${statusSymbol(ss.status)} ${escapeHtml(ss.name)} <small style="opacity:0.8">(${escapeHtml(ss.status)})</small></div>`;
+                });
+              }
+              label += '</div>';
+              graph += `${id}["${label.replace(/"/g,'&quot;')}"]:::${statusClass(s.status)}\n`;
+              // connect to next
+              if(sidx < steps.length - 1){
+                const nextId = `N${tidx}_${sidx+1}`;
+                graph += `${id} --> ${nextId}\n`;
+              }
+            });
+          }
+
+          mdiv.textContent = graph;
+          paneContent.appendChild(mdiv);
+
+          // small textual metadata and toggle
+          const meta = document.createElement('div'); meta.className = 'muted'; meta.style.marginTop='8px'; meta.textContent = `id: ${t.testCaseId || t.uuid || ''}`;
+          paneContent.appendChild(meta);
+
+          // failure details and trace toggle
+          if(t.statusDetails && (t.statusDetails.message || t.statusDetails.trace)){
+            const summary = document.createElement('div'); summary.className = 'muted'; summary.style.marginTop='8px'; summary.textContent = t.statusDetails.message || '';
+            const toggle = document.createElement('span'); toggle.className = 'trace-toggle'; toggle.textContent = 'Show trace';
+            summary.appendChild(toggle);
+            paneContent.appendChild(summary);
+
+            const pre = document.createElement('pre'); pre.className = 'trace'; pre.style.display = 'none'; pre.textContent = (t.statusDetails.message ? t.statusDetails.message + '\n\n' : '') + (t.statusDetails.trace || '');
+            paneContent.appendChild(pre);
+
+            toggle.addEventListener('click', () => { const visible = pre.style.display !== 'none'; pre.style.display = visible ? 'none' : 'block'; toggle.textContent = visible ? 'Show trace' : 'Hide trace'; });
+          }
+
+          pane.appendChild(paneContent);
+          diagramContainer.appendChild(pane);
+
+          // render this mermaid container
+          try { mermaid.init(undefined, mdiv); } catch(e) { console.error('mermaid render error for test', tidx, e); }
+        });
+
+        // textual results list removed — diagrams only
+
+      } catch (err) {
+        console.error(err);
+        document.getElementById('diagram').textContent = 'Error loading results: ' + err.message;
+      }
+    }
+
+    // run
+    window.addEventListener('load', build);
+  </script>
+</body>
+</html>

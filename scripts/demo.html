@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parcel services — Glassmorphic Flows</title>
+
+    <script type="module">
+        import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+
+        mermaid.initialize({
+          startOnLoad: true,
+          theme: "dark",
+          themeVariables: { fontFamily: "Poppins, Inter, Arial, sans-serif" },
+          flowchart: { curve: "basis", htmlLabels: true }
+        });
+    </script>
+
+    <style>
+        body {
+          font-family: "Poppins", sans-serif;
+          margin: 0; padding: 0;
+          background: radial-gradient(circle at 20% 30%, rgba(0,0,0,0.5), rgba(10, 10, 10, 0.95)), url(https://c7.alamy.com/comp/PB25GN/aerial-view-of-busan-new-port-of-south-korea-container-ship-in-import-export-and-business-logistic-in-busan-new-port-PB25GN.jpg) no-repeat center center fixed;
+          background-size: cover;
+          color: #fff;
+         // backdrop-filter: blur(10px);
+        }
+
+        header {
+          text-align: center;
+          padding: 40px 20px;
+          background: rgba(255,255,255,0.05);
+          border-bottom: 1px solid rgba(255,255,255,0.2);
+          box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+          backdrop-filter: blur(22px);
+        }
+        header h1 {
+          font-size: 2.2rem;
+          font-weight: 700;
+          margin: 0;
+          color: #fff;
+          text-shadow: 0 0 20px rgba(255,255,255,0.25);
+        }
+        header p {
+          margin-top: 8px;
+          font-weight: 400;
+          color: rgba(255,255,255,0.75);
+        }
+
+        section {
+          margin: 35px auto;
+          width: 88%;
+          border-radius: 22px;
+          background: rgba(255,255,255,0.08);
+          box-shadow: 0 8px 35px rgba(0,0,0,0.45), inset 0 0 20px rgba(255,255,255,0.06);
+          backdrop-filter: blur(30px) saturate(160%);
+          border: 1px solid rgba(255,255,255,0.25);
+          transition: all 0.4s ease-in-out;
+        }
+
+        .section-header {
+          font-weight: 600; font-size: 1.25rem;
+          background: rgba(255,255,255,0.05); border-radius: 20px 20px 0 0;
+          user-select: none; letter-spacing: 0.5px;
+          padding: 14px 18px;
+        }
+
+        .section-content {
+          padding: 20px 0 30px 0;
+        }
+
+        .status-legend {
+          display: flex; align-items: center; gap: 15px;
+          margin: 10px 20px; padding: 10px 14px;
+          background: rgba(255,255,255,0.05); border-radius: 14px; border: 1px solid rgba(255,255,255,0.2);
+          backdrop-filter: blur(20px); box-shadow: 0 6px 15px rgba(0,0,0,0.35);
+        }
+        .status-dot { width:16px; height:16px; border-radius:50%; box-shadow:0 0 12px rgba(255,255,255,0.4);}
+        .status-dot.passed { background: #2ecc71; }
+        .status-dot.failed { background: #e74c3c; }
+        .status-dot.skipped { background: #f1c40f; }
+        .status-dot.notexecuted { background: #95a5a6; }
+        .status-label { font-size:14px; color: rgba(255,255,255,0.9); }
+
+        .mermaid {
+          padding: 25px;
+          margin: 0 15px;
+          border-radius: 20px;
+          background: rgba(255,255,255,0.07);
+          border: 1px solid rgba(255,255,255,0.25);
+          box-shadow: 0 8px 35px rgba(0,0,0,0.45);
+          backdrop-filter: blur(35px) saturate(150%);
+          transform-style: preserve-3d;
+        }
+
+        .node rect {
+          rx: 14px; ry: 14px;
+          fill: rgba(255,255,255,0.08) !important;
+          stroke-width: 2px !important;
+          stroke: rgba(255,255,255,0.15) !important;
+          backdrop-filter: blur(18px) saturate(150%) !important;
+          filter: drop-shadow(0 6px 20px rgba(0,0,0,0.3)) !important;
+          transition: all 0.3s ease !important;
+        }
+        .node.passed rect { fill: rgba(46,204,113,0.18) !important; stroke: rgba(46,204,113,0.55) !important; }
+        .node.failed rect { fill: rgba(231,76,60,0.18) !important; stroke: rgba(231,76,60,0.55) !important; }
+        .node.skipped rect { fill: rgba(241,196,15,0.18) !important; stroke: rgba(241,196,15,0.55) !important; }
+        .node.notexecuted rect { fill: rgba(149,165,166,0.18) !important; stroke: rgba(149,165,166,0.55) !important; }
+
+        .node text { fill:#fff; font-size:14px; text-shadow:0 0 3px rgba(0,0,0,0.5); }
+
+        .nodeLabel span.substep {
+          display: block;
+          font-size: 12px;
+          color: rgba(255,255,255,0.85);
+          margin-left: 2px;
+        }
+
+        .edgePath path { stroke-width: 2.5px; stroke: url(#gradientStroke); filter: drop-shadow(0 3px 12px rgba(0,0,0,0.5)); }
+
+        footer {
+          text-align:center; padding:25px; font-size:14px;
+          background: rgba(255,255,255,0.05); backdrop-filter: blur(15px);
+          color: rgba(255,255,255,0.9); border-top:1px solid rgba(255,255,255,0.2);
+          box-shadow: 0 -6px 25px rgba(0,0,0,0.5);
+        }
+    </style>
+
+    <svg style="height:0;width:0;position:absolute;">
+        <defs>
+            <linearGradient id="gradientStroke" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#4bc0c8"/>
+                <stop offset="100%" stop-color="#2ecc71"/>
+            </linearGradient>
+        </defs>
+    </svg>
+
+<body>
+<header>
+    <h1>📦 Parcel services — Glassmorphic Flows</h1>
+    <p>All nodes fully expanded with status-based tinted borders</p>
+</header>
+
+<!-- ==================== FLOWS ==================== -->
+<section>
+    <div class="section-header">Norgespakke™ Small</div>
+    <div class="section-content">
+        <div class="status-legend">
+            <div class="status-dot passed"></div><span class="status-label">Passed</span>
+            <div class="status-dot failed"></div><span class="status-label">Failed</span>
+            <div class="status-dot skipped"></div><span class="status-label">Skipped</span>
+            <div class="status-dot notexecuted"></div><span class="status-label">Not Executed</span>
+        </div>
+        <div class="mermaid">
+            flowchart LR
+            A["📦 Select Parcel Type<br><span class='substep'>✅ Choose Norgespakke Small</span><span class='substep'>✅ Verify weight & size</span>"]:::passed
+            --> B["💳 Purchase via App<br><span class='substep'>✅ Payment success</span><span class='substep'>⚙️ Label generated</span>"]:::passed
+            --> C["📦 Prepare Parcel<br><span class='substep'>✅ Attach label</span><span class='substep'>✅ Seal properly</span>"]:::passed
+            --> D["🏤 Drop-off at Outlet<br><span class='substep'>⚠️ Queue delay</span><span class='substep'>⏳ Scanning pending</span>"]:::skipped
+            --> E["🚚 Parcel in Transit<br><span class='substep'>❌ Sorting failed</span><span class='substep'>🔁 Retry in progress</span>"]:::failed
+            --> F["📬 Delivered to Recipient<br><span class='substep'>✅ Received</span><span class='substep'>📅 Within SLA</span>"]:::passed
+        </div>
+    </div>
+</section>
+
+<section>
+    <div class="section-header">Norgespakke™ Express</div>
+    <div class="section-content">
+        <div class="status-legend">
+            <div class="status-dot passed"></div><span class="status-label">Passed</span>
+            <div class="status-dot failed"></div><span class="status-label">Failed</span>
+            <div class="status-dot skipped"></div><span class="status-label">Skipped</span>
+            <div class="status-dot notexecuted"></div><span class="status-label">Not Executed</span>
+        </div>
+        <div class="mermaid">
+            flowchart LR
+            A["⚡ Select Express Service<br><span class='substep'>✅ Choose Norgespakke Express</span><span class='substep'>✅ Confirm same-day delivery</span>"]:::passed
+            --> B["🏷️ Generate Label<br><span class='substep'>✅ Auto-print label</span><span class='substep'>✅ Match order ID</span>"]:::passed
+            --> C["📦 Dispatch to Hub<br><span class='substep'>✅ Loaded</span><span class='substep'>🚛 Departure scanned</span>"]:::passed
+            --> D["🛰️ Tracking in Real-time<br><span class='substep'>✅ Location updates</span><span class='substep'>✅ ETA Calculated</span>"]:::passed
+            --> E["🚀 Delivered Same Day<br><span class='substep'>✅ Proof of delivery</span><span class='substep'>✅ Notification sent</span>"]:::passed
+        </div>
+    </div>
+</section>
+
+<section>
+    <div class="section-header">Return Parcel Flow</div>
+    <div class="section-content">
+        <div class="status-legend">
+            <div class="status-dot passed"></div><span class="status-label">Passed</span>
+            <div class="status-dot failed"></div><span class="status-label">Failed</span>
+            <div class="status-dot skipped"></div><span class="status-label">Skipped</span>
+            <div class="status-dot notexecuted"></div><span class="status-label">Not Executed</span>
+        </div>
+        <div class="mermaid">
+            flowchart LR
+            A["♻️ Initiate Return<br><span class='substep'>✅ Select reason</span><span class='substep'>✅ Get QR code</span>"]:::passed
+            --> B["🏤 Drop at Post Office<br><span class='substep'>✅ Scanned</span><span class='substep'>⏳ Awaiting pickup</span>"]:::skipped
+            --> C["🚚 Return Transit<br><span class='substep'>✅ Tracking active</span><span class='substep'>⚙️ Hub processing</span>"]:::passed
+            --> D["🏢 Received by Seller<br><span class='substep'>❌ Damage found</span><span class='substep'>🔁 Replacement initiated</span>"]:::failed
+        </div>
+    </div>
+</section>
+
+<section>
+    <div class="section-header">Business Freight Flow</div>
+    <div class="section-content">
+        <div class="status-legend">
+            <div class="status-dot passed"></div><span class="status-label">Passed</span>
+            <div class="status-dot failed"></div><span class="status-label">Failed</span>
+            <div class="status-dot skipped"></div><span class="status-label">Skipped</span>
+            <div class="status-dot notexecuted"></div><span class="status-label">Not Executed</span>
+        </div>
+        <div class="mermaid">
+            flowchart LR
+            A["🏢 Freight Booking<br><span class='substep'>✅ Customer details</span><span class='substep'>✅ Vehicle assigned</span>"]:::passed
+            --> B["🚛 Load Cargo<br><span class='substep'>✅ Items scanned</span><span class='substep'>✅ Secured</span>"]:::passed
+            --> C["📡 GPS Tracking<br><span class='substep'>✅ Active</span><span class='substep'>✅ ETA broadcast</span>"]:::passed
+            --> D["🏭 Delivery Hub<br><span class='substep'>⏳ Verification pending</span><span class='substep'>⚙️ Dock processing</span>"]:::notexecuted
+            --> E["📦 Final Delivery<br><span class='substep'>✅ POD received</span><span class='substep'>✅ Invoice triggered</span>"]:::passed
+        </div>
+    </div>
+</section>
+
+<footer>
+    &copy; 2025 Parcel services — Glassmorphic Dashboard
+</footer>
+</body>
+</html>

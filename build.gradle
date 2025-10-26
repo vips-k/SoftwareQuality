@@ -1,0 +1,123 @@
+plugins {
+    id 'java'
+    id "io.qameta.allure" version "2.12.0"
+}
+
+group = 'com.example.softwareQuality.automation'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+// Define the version of Allure you want to use via the allureVersion property
+def allureVersion = "2.24.0"
+def cucumberVersion = '7.20.1'
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+
+    // Cucumber for JVM (JUnit Platform / JUnit 5)
+    testImplementation "io.cucumber:cucumber-java:${cucumberVersion}"
+    testImplementation "io.cucumber:cucumber-junit-platform-engine:${cucumberVersion}"
+    testImplementation "io.cucumber:cucumber-picocontainer:${cucumberVersion}"
+
+    // Import allure-bom to ensure correct versions of all the dependencies are used
+    testImplementation platform("io.qameta.allure:allure-bom:$allureVersion")
+    // Add necessary Allure dependencies to dependencies section
+    testImplementation "io.qameta.allure:allure-cucumber7-jvm"
+    testImplementation "io.qameta.allure:allure-junit-platform"
+    testImplementation "io.qameta.allure:allure-java-commons"
+
+}
+
+test {
+    useJUnitPlatform()
+}
+
+tasks.register("cucumberCli") {
+    dependsOn assemble, testClasses
+    doLast {
+        javaexec {
+            // use mainClass.set instead of deprecated 'main'
+            mainClass.set("io.cucumber.core.cli.Main")
+            // make sure classpath uses the test runtime classpath so all test deps are available
+            classpath = sourceSets.main.output + sourceSets.test.output + configurations.testRuntimeClasspath
+            args = [
+                    '--plugin', 'pretty',
+                    '--plugin', 'html:target/cucumber-report.html',
+                    '--plugin', 'io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm',
+                    '--glue', 'com.example.softwareQuality.automation',
+                    'src/test/resources']
+        }
+    }
+    finalizedBy allureReport
+}
+
+allure {
+    allureReport {
+        clean.set(true)
+        singleFile.set(true)
+    }
+}
+
+// New task: process/prepare allure result JSONs before generating the single-file report
+tasks.register('prepareAllureResults') {
+    description = 'Group steps with "* business step" as parent and subsequent steps as substeps (delegated to Python)'
+    doLast {
+        def script = file('scripts/prepare_allure_results.py')
+        def resultsDir = layout.buildDirectory.dir('allure-results').get().asFile
+
+        println "prepareAllureResults: invoking ${script} with ${resultsDir}"
+        exec {
+            executable = 'python3'
+            args = [script.absolutePath, resultsDir.absolutePath]
+            // let the script handle validation and exit codes; do not fail the Gradle build silently
+            ignoreExitValue = true
+        }
+    }
+}
+
+// New task: add Mermaid HTML attachments to Allure result JSONs (runs after prepareAllureResults)
+tasks.register('addMermaidAttachment') {
+    description = 'Generate Mermaid HTML flow attachments for business steps and attach to Allure result JSONs'
+    doLast {
+        def script = file('scripts/add_mermaid_attachment.py')
+        def resultsDir = layout.buildDirectory.dir('allure-results').get().asFile
+
+        println "addMermaidAttachment: invoking ${script} with ${resultsDir}"
+        exec {
+            executable = 'python3'
+            args = [script.absolutePath, resultsDir.absolutePath]
+            // do not fail the build if this script has problems
+            ignoreExitValue = true
+        }
+    }
+}
+
+// New task: summarize Allure result JSONs into a single summary file
+tasks.register('summarizeAllureResults') {
+    description = 'Summarize all allure-result JSON files into a single JSON file (delegated to Python)'
+    doLast {
+        def script = file('scripts/summarize_allure_results.py')
+        def resultsDir = layout.buildDirectory.dir('allure-results').get().asFile
+
+        println "summarizeAllureResults: invoking ${script} with ${resultsDir}"
+        exec {
+            executable = 'python3'
+            args = [script.absolutePath, resultsDir.absolutePath]
+            // let the script handle validation and exit codes; do not fail the Gradle build silently
+            ignoreExitValue = true
+        }
+    }
+}
+
+// Ensure the prepare task runs before the allure single-file report generation
+tasks.named('allureReport') {
+    dependsOn 'prepareAllureResults'
+    // run the summarization script before generating the report
+    dependsOn 'summarizeAllureResults'
+    // also run the mermaid attachment task before generating the report
+    //dependsOn 'addMermaidAttachment'
+}
