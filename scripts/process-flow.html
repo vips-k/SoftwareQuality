@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Parcel Services — Process Flow Dashboard</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        :root{
+          --bg1:#0f2027; --bg2:#203a43; --bg3:#2c5364;
+          --card-bg: rgba(255,255,255,0.05);
+          --muted:#cfd8dc; --accent:#00e676;
+          --glass: rgba(255,255,255,0.04);
+          --passed:#00e676; --failed:#ef5350; --skipped:#ffb300; --notrun:#9aa4ab;
+        }
+        *{box-sizing:border-box}
+        body{
+          margin:0; height:100vh; font-family:"Raleway",system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;
+          background: linear-gradient(145deg,var(--bg1),var(--bg2),var(--bg3));
+          color:#fff; display:flex; gap:16px; padding:16px; overflow:hidden;
+        }
+
+        /* Sidebar */
+        .sidebar{
+          width:320px; min-width:260px; height:100%; overflow:auto; padding:18px;
+          background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+          border-radius:14px; box-shadow: 6px 6px 24px rgba(0,0,0,0.4);
+          backdrop-filter: blur(8px);
+        }
+        .brand{display:flex; align-items:center; gap:12px; margin-bottom:14px}
+        .brand h2{margin:0;color:#e0f7fa;font-weight:700}
+        .hier-title{font-size:0.9rem; color:var(--muted); margin:8px 0 6px}
+        .hier-list{display:flex; flex-direction:column; gap:8px}
+        .hier-item{
+          display:flex; gap:10px; align-items:center; padding:10px 12px; border-radius:10px;
+          background:var(--card-bg); cursor:pointer; transition:transform .15s,box-shadow .15s;
+        }
+        .hier-item:hover{transform:translateY(-4px); box-shadow: 0 8px 18px rgba(0,0,0,0.5)}
+        .hier-item i{width:26px; text-align:center; color:var(--accent)}
+        .hier-sub{font-size:0.85rem; color:var(--muted)}
+
+        /* Main area */
+        .main{
+          flex:1; height:100%; overflow:auto; padding:18px; border-radius:14px;
+          background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+          box-shadow: 6px 6px 24px rgba(0,0,0,0.45); backdrop-filter: blur(6px);
+        }
+
+        .top-controls{display:flex; gap:12px; align-items:center; margin-bottom:12px; flex-wrap:wrap}
+        .tabs{display:flex; gap:8px; flex-wrap:wrap}
+        .tab{padding:8px 12px; border-radius:10px; background:var(--glass); cursor:pointer; font-weight:600; color:var(--muted)}
+        .tab.active{background:linear-gradient(90deg,#012a2a,#004d40); color:#e8fff4; box-shadow: 0 6px 18px rgba(0,0,0,0.45)}
+        .search{
+          flex:1; display:flex; align-items:center; gap:8px; background:var(--card-bg); padding:8px 12px; border-radius:10px;
+        }
+        .search input{flex:1; background:transparent; border:0; outline:none; color:#fff; font-size:0.95rem}
+        .filters{display:flex; gap:8px; align-items:center}
+
+        select, button{
+          background:var(--glass); color:#fff; border:0; padding:8px 10px; border-radius:8px; cursor:pointer;
+        }
+        button.primary{background:linear-gradient(90deg,#00e676,#00bfa5); color:#002; font-weight:700}
+
+        .legend{display:flex; gap:8px; margin-left:auto; align-items:center; color:var(--muted); font-size:0.85rem}
+        .legend .dot{width:12px;height:12px;border-radius:50%; display:inline-block; margin-right:6px}
+
+        /* Grid of flow cards */
+        .grid{display:grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap:14px; margin-top:12px}
+        .flow-card{
+          padding:14px; border-radius:12px; background:rgba(0,0,0,0.18); backdrop-filter: blur(4px);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.02), 6px 6px 18px rgba(0,0,0,0.5);
+          transition:transform .12s;
+          display:flex; flex-direction:column; gap:10px;
+        }
+        .flow-card:hover{transform:translateY(-6px)}
+        .flow-head{display:flex; align-items:center; gap:12px}
+        .flow-head i{font-size:1.6rem; color:var(--accent); width:42px; text-align:center}
+        .flow-title{font-weight:700; font-size:1.02rem}
+        .flow-meta{display:flex; gap:8px; align-items:center; margin-top:8px}
+        .status{padding:6px 10px;border-radius:999px;font-weight:700;font-size:0.78rem}
+        .s-completed{background:var(--passed);color:#002}
+        .s-progress{background:var(--skipped);color:#000}
+        .s-pending{background:var(--failed);color:#fff}
+        .s-notchecked{background:var(--notrun); color:#002}
+
+        .flow-diagram{
+          display:flex; align-items:center; gap:8px; overflow:auto; padding:10px 6px;
+          background: linear-gradient(90deg, rgba(255,255,255,0.015), rgba(255,255,255,0.01));
+          border-radius:10px;
+        }
+
+        .step {
+          display:flex; flex-direction:column; align-items:center; gap:8px;
+          min-width:120px; max-width:200px; padding:8px; position:relative;
+        }
+
+        .step .node {
+          width:48px; height:48px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+          background:rgba(255,255,255,0.04); color:#fff; font-weight:700; box-shadow: 0 6px 16px rgba(0,0,0,0.45);
+          transition:transform .18s, box-shadow .18s;
+        }
+        .step.passed .node{ background: linear-gradient(180deg, rgba(0,230,118,0.12), rgba(0,230,118,0.06)); border:2px solid var(--passed); color:var(--passed)}
+        .step.failed .node{ background: linear-gradient(180deg, rgba(239,83,80,0.12), rgba(239,83,80,0.06)); border:2px solid var(--failed); color:var(--failed)}
+        .step.skipped .node{ background: linear-gradient(180deg, rgba(255,179,0,0.09), rgba(255,179,0,0.04)); border:2px solid var(--skipped); color:var(--skipped)}
+        .step.notrun .node{ background: linear-gradient(180deg, rgba(154,164,171,0.06), rgba(154,164,171,0.03)); border:2px solid var(--notrun); color:var(--notrun)}
+
+        .step .label { font-size:0.85rem; color:var(--muted); text-align:center; max-width:140px; line-height:1.15rem; }
+
+        /* connector arrow between steps */
+        .connector {
+          height:2px; min-width:28px; flex:0 0 28px; background:linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+          position:relative; display:flex; align-items:center; justify-content:center;
+        }
+        .connector:after{
+          content: "\f061"; /* fa-arrow-right */
+          font-family: "Font Awesome 6 Free";
+          font-weight:900;
+          position:absolute;
+          right:-6px;
+          font-size:12px;
+          color:rgba(255,255,255,0.22);
+        }
+
+        .actions{display:flex; gap:8px; margin-top:6px}
+        .small{padding:6px 8px; font-size:0.85rem; border-radius:8px}
+
+        .empty{padding:40px; text-align:center; color:var(--muted)}
+
+        /* Expand area (left sidebar detail) */
+        .detail{
+          margin-top:12px; padding:12px; border-radius:10px; background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+          color:var(--muted); font-size:0.9rem;
+        }
+
+        /* Responsive */
+        @media (max-width:1200px){
+          .grid{grid-template-columns: repeat(auto-fill, minmax(300px, 1fr))}
+        }
+        @media (max-width:900px){ .sidebar{display:none} body{padding:12px} .main{padding:12px} }
+    </style>
+</head>
+<body>
+
+<aside class="sidebar" id="sidebar">
+    <div class="brand">
+        <i class="fa-solid fa-shipping-fast fa-2x" style="color:var(--accent)"></i>
+        <div>
+            <h2>Parcel | Services</h2>
+            <div class="hier-sub">Service hierarchy & flows</div>
+        </div>
+    </div>
+
+    <div class="hier-title">Quick categories</div>
+    <div class="hier-list" id="hierList">
+        <!-- Injected -->
+    </div>
+
+    <div class="hier-title" style="margin-top:12px">Legend</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px">
+        <div style="display:flex; gap:8px; align-items:center"><span class="dot" style="background:var(--passed)"></span>Passed</div>
+        <div style="display:flex; gap:8px; align-items:center"><span class="dot" style="background:var(--failed)"></span>Failed</div>
+        <div style="display:flex; gap:8px; align-items:center"><span class="dot" style="background:var(--skipped)"></span>Skipped</div>
+        <div style="display:flex; gap:8px; align-items:center"><span class="dot" style="background:var(--notrun)"></span>Not run</div>
+    </div>
+
+    <div class="detail" id="sidebarDetail" style="margin-top:14px">
+        <strong>Tip</strong>
+        <p style="margin:8px 0 0;color:var(--muted)">Use the tabs and search to filter flows. Each substep shows an icon and color. Parent status updates automatically based on substeps.</p>
+    </div>
+</aside>
+
+<main class="main">
+    <div class="top-controls">
+        <div class="tabs" id="tabs"></div>
+
+        <div class="search" title="Search flows and substeps">
+            <i class="fa-solid fa-magnifying-glass" style="opacity:.8"></i>
+            <input id="searchInput" placeholder="Search flows, sub-steps, keywords (e.g., 'customs', 'locker', 'express')">
+            <button id="clearSearch" title="Clear" class="small"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div class="filters">
+            <select id="statusFilter" title="Filter by status">
+                <option value="all">All statuses</option>
+                <option value="completed">Completed</option>
+                <option value="in-progress">In Progress</option>
+                <option value="pending">Pending</option>
+            </select>
+
+            <select id="serviceFilter" title="Filter by service type">
+                <option value="all">All services</option>
+            </select>
+
+            <button id="exportCsv" class="primary">Export CSV</button>
+        </div>
+
+        <div class="legend" style="margin-left:auto">
+            <i class="fa-solid fa-circle-info" style="opacity:.9"></i>
+            <div style="margin-left:6px">Showing <span id="visibleCount">0</span> flows</div>
+        </div>
+    </div>
+
+    <section id="flowsArea" class="grid">
+        <!-- cards injected here -->
+    </section>
+
+    <div id="emptyMsg" class="empty" style="display:none">
+        No flows match your filter/search.
+    </div>
+
+</main>
+
+<script>
+    /* -------------------------
+       Data model: Categories & Flows (same as you provided)
+       ------------------------- */
+    const DATA = {
+      "Domestic": [
+        {
+          id:"dom-home-A",
+          name:"Home Delivery — Successful Doorstep Delivery",
+          status:"completed",
+          icon:"fa-truck",
+          tags:["home","delivery","doorstep"],
+          substeps:[
+            "Order accepted & label printed",
+            "Parcel scanned at pick-up",
+            "Sorted at local depot",
+            "Out for delivery",
+            "Delivered to doorstep & POD captured"
+          ]
+        },
+        {
+          id:"dom-home-B",
+          name:"Home Delivery — Recipient Not Home (Retry)",
+          status:"in-progress",
+          icon:"fa-house-circle-check",
+          tags:["home","retry","delivery"],
+          substeps:[
+            "Courier attempts delivery",
+            "Recipient not present",
+            "Delivery left pending & note added",
+            "Retry scheduled next working day",
+            "Successful re-delivery or moved to pickup point"
+          ]
+        },
+        {
+          id:"dom-locker-A",
+          name:"Parcel Locker — Standard Locker Deposit",
+          status:"completed",
+          icon:"fa-lock",
+          tags:["locker","pickup","sms"],
+          substeps:[
+            "Parcel sent to locker hub",
+            "Locker assigned & code generated",
+            "SMS + Email sent to customer",
+            "Customer scans QR and retrieves parcel",
+            "Pickup confirmed in system"
+          ]
+        },
+        {
+          id:"dom-locker-B",
+          name:"Locker Overflow — Redirect to Pickup Point",
+          status:"pending",
+          icon:"fa-box",
+          tags:["locker","redirect"],
+          substeps:[
+            "Locker capacity checked — found full",
+            "Parcel rerouted to nearest post office",
+            "Notification sent with pickup details",
+            "Parcel handed over at desk after ID check"
+          ]
+        },
+        {
+          id:"dom-b2b-A",
+          name:"B2B Bulk Delivery — Scheduled Branch Distribution",
+          status:"completed",
+          icon:"fa-warehouse",
+          tags:["b2b","bulk","scheduled"],
+          substeps:[
+            "Daily pickup consolidation",
+            "Sorted & palletized",
+            "Route optimized across branches",
+            "Delivered to business locations",
+            "Proof of delivery recorded"
+          ]
+        }
+      ],
+
+      "International": [
+        {
+          id:"int-std-A",
+          name:"International Standard — Customs Normal Flow",
+          status:"in-progress",
+          icon:"fa-plane",
+          tags:["international","customs","standard"],
+          substeps:[
+            "Sender completes customs declaration",
+            "Parcel departs from origin hub",
+            "Customs inspection & duties calculation",
+            "Cleared & handed over to local partner",
+            "Final mile delivery / pickup"
+          ]
+        },
+        {
+          id:"int-express-A",
+          name:"International Express — Priority Air Freight",
+          status:"in-progress",
+          icon:"fa-plane-up",
+          tags:["express","air","priority"],
+          substeps:[
+            "Express pickup & expedited sorting",
+            "Air freight booking & load",
+            "Priority customs clearance",
+            "Airport to local depot transfer",
+            "Same/next-day local delivery"
+          ]
+        },
+        {
+          id:"int-partner-A",
+          name:"Cross-border Business — EDI & Multi-consignee",
+          status:"pending",
+          icon:"fa-file-lines",
+          tags:["b2b","edi","bulk"],
+          substeps:[
+            "Shipment manifest generated via EDI",
+            "Customs docs validated",
+            "Split consignments to region partners",
+            "Partner delivery with local PODs",
+            "Central status aggregation"
+          ]
+        },
+        {
+          id:"int-remote-A",
+          name:"Remote Area Delivery — Partner Handover",
+          status:"pending",
+          icon:"fa-location-dot",
+          tags:["remote","partner","handover"],
+          substeps:[
+            "Standard international transit",
+            "Arrival at regional hub",
+            "Handover to partner for remote leg",
+            "Partner updates tracking & delivery"
+          ]
+        }
+      ],
+
+      "Business Freight": [
+        {
+          id:"bf-pallet-A",
+          name:"Pallet Freight — Pickup to Warehouse",
+          status:"completed",
+          icon:"fa-dolly",
+          tags:["pallet","freight","warehouse"],
+          substeps:[
+            "Pallet scheduled pickup & forklift load",
+            "Weigh & label pallet",
+            "Transported to consolidation hub",
+            "Delivered to warehouse / consignee"
+          ]
+        },
+        {
+          id:"bf-FTL-A",
+          name:"Full Truckload — Single Consignee",
+          status:"in-progress",
+          icon:"fa-truck-field",
+          tags:["ftl","truck","temperature"],
+          substeps:[
+            "Route planning & vehicle assignment",
+            "Load & documentation check",
+            "Transit (may include sensors for temp)",
+            "Delivery & POD"
+          ]
+        },
+        {
+          id:"bf-LTL-A",
+          name:"Less-than-Truckload — Hub Consolidation",
+          status:"pending",
+          icon:"fa-warehouse",
+          tags:["ltl","consolidation","hub"],
+          substeps:[
+            "Multiple pickups combined",
+            "Consolidate at regional hub",
+            "Sort shipments for final mile",
+            "Deliver split consignments"
+          ]
+        },
+        {
+          id:"bf-incident-A",
+          name:"Freight Incident — Damage & Claim",
+          status:"pending",
+          icon:"fa-triangle-exclamation",
+          tags:["incident","claim","insurance"],
+          substeps:[
+            "Damage reported on delivery",
+            "Item quarantined & evidence collected",
+            "Claim lodged & forwarded to insurance",
+            "Resolution (replacement/refund) processed"
+          ]
+        }
+      ],
+
+      "E-commerce & Returns": [
+        {
+          id:"ec-return-A",
+          name:"Return Pickup — Customer QR Label",
+          status:"completed",
+          icon:"fa-rotate-left",
+          tags:["return","qr","locker"],
+          substeps:[
+            "Customer requests return via portal",
+            "QR label issued & courier pickup scheduled",
+            "Courier scans QR and collects parcel",
+            "Parcel returned to seller hub and processed"
+          ]
+        },
+        {
+          id:"ec-return-B",
+          name:"Return Locker — Drop & Auto-scan",
+          status:"in-progress",
+          icon:"fa-lock-open",
+          tags:["return","locker","autoscan"],
+          substeps:[
+            "Customer drops item in return locker",
+            "Locker auto scans & logs item",
+            "System notifies seller",
+            "Item moved to returns processing"
+          ]
+        },
+        {
+          id:"ec-reverse-Bulk",
+          name:"Reverse Logistics — Retailer Bulk Returns",
+          status:"pending",
+          icon:"fa-warehouse",
+          tags:["reverse","bulk","processing"],
+          substeps:[
+            "Retailer schedules bulk return pickup",
+            "Items transported to central refurbishment",
+            "QC & refurbish or disposal",
+            "Inventory adjusted & credit issued"
+          ]
+        },
+        {
+          id:"ec-wrongItem-A",
+          name:"Wrong Item Delivered — RMA Flow",
+          status:"pending",
+          icon:"fa-reply-all",
+          tags:["rma","wrong-item","customer"],
+          substeps:[
+            "Customer reports wrong item",
+            "RMA authorized & return scheduled",
+            "Wrong item returned & replaced",
+            "Customer confirms replacement"
+          ]
+        }
+      ],
+
+      "Specialized": [
+        {
+          id:"sp-temp-A",
+          name:"Temperature-controlled — Cold Chain Delivery",
+          status:"in-progress",
+          icon:"fa-snowflake",
+          tags:["temperature","coldchain","sensor"],
+          substeps:[
+            "Pickup in refrigerated vehicle",
+            "Real-time temperature monitoring",
+            "Transit with temperature logs",
+            "Delivery with compliance handoff"
+          ]
+        },
+        {
+          id:"sp-danger-A",
+          name:"Dangerous Goods — Secure Transport",
+          status:"pending",
+          icon:"fa-biohazard",
+          tags:["dangerous","hazmat","compliance"],
+          substeps:[
+            "Sender provides DG documentation",
+            "Safety checks & segregation",
+            "Secure transport route assigned",
+            "Delivery with incident logging"
+          ]
+        },
+        {
+          id:"sp-doc-A",
+          name:"Document Courier — Confidential Handover",
+          status:"completed",
+          icon:"fa-envelope",
+          tags:["document","confidential","pov"],
+          substeps:[
+            "Express pickup signed by courier",
+            "Direct delivery with recipient ID",
+            "Signature captured & archived"
+          ]
+        },
+        {
+          id:"sp-temp-incident",
+          name:"Cold Chain Incident — Threshold Breach",
+          status:"pending",
+          icon:"fa-temperature-three-quarters",
+          tags:["incident","temperature","alert"],
+          substeps:[
+            "Sensor reports temp spike",
+            "Courier diverts to nearest cold facility",
+            "Quality check on goods",
+            "Decision: accept/refuse & notify parties"
+          ]
+        }
+      ],
+
+      "Postal & Hybrid": [
+        {
+          id:"ph-direct-A",
+          name:"Direct Mail Campaign — Bulk Dispatch",
+          status:"completed",
+          icon:"fa-mail-bulk",
+          tags:["mail","campaign","bulk"],
+          substeps:[
+            "Bulk list uploaded & print job scheduled",
+            "Printed items sorted regionally",
+            "Mail transport & delivery",
+            "Campaign delivery stats aggregated"
+          ]
+        },
+        {
+          id:"ph-hybrid-A",
+          name:"Hybrid Mail — Digital-to-Print",
+          status:"completed",
+          icon:"fa-print",
+          tags:["hybrid","print","api"],
+          substeps:[
+            "Digital document uploaded via API",
+            "Print & pack",
+            "Dispatch via postal network",
+            "Delivery & confirmation"
+          ]
+        },
+        {
+          id:"ph-sub-A",
+          name:"Subscription — Scheduled Delivery",
+          status:"in-progress",
+          icon:"fa-calendar-days",
+          tags:["subscription","scheduled","recurring"],
+          substeps:[
+            "Subscription cycle generate shipments",
+            "Stock & packing check",
+            "On-schedule dispatch",
+            "Delivery confirmation & billing"
+          ]
+        },
+        {
+          id:"ph-address-A",
+          name:"Address Correction Flow — Undeliverable",
+          status:"pending",
+          icon:"fa-address-card",
+          tags:["address","correction","undeliverable"],
+          substeps:[
+            "Delivery fails due to address",
+            "Forwarded to address correction team",
+            "Customer contacted for update",
+            "Resend after correction"
+          ]
+        }
+      ]
+    };
+
+    /* -------------------------
+       UI initialisation + helpers
+       ------------------------- */
+
+    const categories = Object.keys(DATA);
+    const tabsEl = document.getElementById('tabs');
+    const hierListEl = document.getElementById('hierList');
+    const flowsArea = document.getElementById('flowsArea');
+    const visibleCountEl = document.getElementById('visibleCount');
+    const searchInput = document.getElementById('searchInput');
+    const clearSearchBtn = document.getElementById('clearSearch');
+    const statusFilter = document.getElementById('statusFilter');
+    const serviceFilter = document.getElementById('serviceFilter');
+    const exportCsvBtn = document.getElementById('exportCsv');
+    const emptyMsg = document.getElementById('emptyMsg');
+
+    let ACTIVE_TAB = categories[0];
+    let pageState = { search: '', status: 'all', service: 'all' };
+
+    /* Render tabs */
+    function renderTabs() {
+      tabsEl.innerHTML = '';
+      categories.forEach(cat => {
+        const btn = document.createElement('div');
+        btn.className = 'tab' + (cat === ACTIVE_TAB ? ' active' : '');
+        btn.innerText = cat;
+        btn.onclick = () => { ACTIVE_TAB = cat; renderTabs(); renderFlows(); highlightSidebar(cat); };
+        tabsEl.appendChild(btn);
+      });
+    }
+
+    /* Sidebar list */
+    function renderSidebar() {
+      hierListEl.innerHTML = '';
+      categories.forEach(cat => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'hier-item';
+        wrapper.onclick = () => { ACTIVE_TAB = cat; renderTabs(); renderFlows(); highlightSidebar(cat); };
+        wrapper.innerHTML = `<i class="fa-solid ${getCategoryIcon(cat)}"></i>
+          <div>
+            <div style="font-weight:700">${cat}</div>
+            <div class="hier-sub">${DATA[cat].length} flows</div>
+          </div>`;
+        hierListEl.appendChild(wrapper);
+      });
+    }
+
+    /* populate service filter with categories + subtypes (tags) */
+    function populateServiceFilter() {
+      const set = new Set();
+      categories.forEach(cat => set.add(cat));
+      Object.values(DATA).flat().forEach(flow => flow.tags.forEach(t => set.add(t)));
+      serviceFilter.innerHTML = '<option value="all">All services</option>';
+      Array.from(set).sort().forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s;
+        opt.innerText = s.charAt(0).toUpperCase() + s.slice(1);
+        serviceFilter.appendChild(opt);
+      });
+    }
+
+    /* Icon selector for category */
+    function getCategoryIcon(cat) {
+      switch(cat){
+        case 'Domestic': return 'fa-house';
+        case 'International': return 'fa-globe';
+        case 'Business Freight': return 'fa-warehouse';
+        case 'E-commerce & Returns': return 'fa-rotate-left';
+        case 'Specialized': return 'fa-screwdriver-wrench';
+        case 'Postal & Hybrid': return 'fa-envelope';
+        default: return 'fa-box';
+      }
+    }
+
+    /* Generate substep statuses based on parent flow status (sensible defaults) */
+    function getSubstepStatuses(flow){
+      const n = (flow.substeps || []).length;
+      const res = [];
+      if(flow.status === 'completed'){
+        for(let i=0;i<n;i++) res.push('passed');
+        return res;
+      }
+      if(flow.status === 'in-progress'){
+        // first ~half passed, next skipped, rest notrun
+        const passedCount = Math.max(1, Math.floor(n/2));
+        for(let i=0;i<n;i++){
+          if(i < passedCount) res.push('passed');
+          else if(i === passedCount) res.push('skipped');
+          else res.push('notrun');
+        }
+        return res;
+      }
+      if(flow.status === 'pending'){
+        // show a failure early to indicate issue
+        for(let i=0;i<n;i++){
+          if(i === 0) res.push('failed');
+          else if(i === 1) res.push('skipped');
+          else res.push('notrun');
+        }
+        return res;
+      }
+      // fallback: mark all notrun
+      for(let i=0;i<n;i++) res.push('notrun');
+      return res;
+    }
+
+    /* derive parent status from substeps */
+    function computeParentFromSubsteps(statuses){
+      if(statuses.length === 0) return { key:'notchecked', label:'Not checked' };
+      if(statuses.every(s => s === 'passed')) return { key:'completed', label:'Passed' };
+      if(statuses.some(s => s === 'failed')) return { key:'pending', label:'Failed' };
+      if(statuses.some(s => s === 'skipped')) return { key:'in-progress', label:'In Progress' };
+      if(statuses.some(s => s === 'passed')) return { key:'in-progress', label:'In Progress' };
+      return { key:'notchecked', label:'Not checked' };
+    }
+
+    /* small helper to map to CSS */
+    function statusToClass(key){
+      switch(key){
+        case 'completed': return 's-completed';
+        case 'in-progress': return 's-progress';
+        case 'pending': return 's-pending';
+        default: return 's-notchecked';
+      }
+    }
+
+    /* Render flows for active tab with current filters */
+    function renderFlows(){
+      flowsArea.innerHTML = '';
+      const raw = DATA[ACTIVE_TAB] || [];
+      const q = pageState.search.trim().toLowerCase();
+      const status = pageState.status;
+      const service = pageState.service;
+
+      const filtered = raw.filter(flow => {
+        if(status !== 'all' && flow.status !== status) return false;
+        if(service !== 'all') {
+          const sLower = service.toLowerCase();
+          const inCategory = ACTIVE_TAB.toLowerCase().includes(sLower);
+          const inTags = (flow.tags || []).some(t => t.toLowerCase().includes(sLower));
+          if(!inCategory && !inTags) return false;
+        }
+        if(q) {
+          const hay = (flow.name + ' ' + flow.substeps.join(' ') + ' ' + (flow.tags||[]).join(' ')).toLowerCase();
+          if(!hay.includes(q)) return false;
+        }
+        return true;
+      });
+
+      if(filtered.length === 0){
+        emptyMsg.style.display = 'block';
+      } else {
+        emptyMsg.style.display = 'none';
+      }
+
+      filtered.forEach(flow => {
+        const statuses = getSubstepStatuses(flow);
+        const parent = computeParentFromSubsteps(statuses);
+
+        const card = document.createElement('article');
+        card.className = 'flow-card';
+
+        // build diagram
+        const diag = document.createElement('div');
+        diag.className = 'flow-diagram';
+        (flow.substeps || []).forEach((s, idx) => {
+          const st = statuses[idx] || 'notrun';
+          const step = document.createElement('div');
+          step.className = 'step ' + (st === 'passed' ? 'passed' : (st==='failed' ? 'failed' : (st==='skipped' ? 'skipped' : 'notrun')));
+          step.innerHTML = `
+            <div class="node">
+              ${st === 'passed' ? '<i class="fa-solid fa-check"></i>' : (st === 'failed' ? '<i class="fa-solid fa-xmark"></i>' : (st === 'skipped' ? '<i class="fa-solid fa-forward-fast"></i>' : '<i class="fa-solid fa-pause"></i>'))}
+            </div>
+            <div class="label">${escapeHtml(s)}</div>
+          `;
+          diag.appendChild(step);
+
+          // connector unless last
+          if(idx < flow.substeps.length - 1){
+            const conn = document.createElement('div');
+            conn.className = 'connector';
+            diag.appendChild(conn);
+          }
+        });
+
+        card.innerHTML = `
+          <div class="flow-head">
+            <i class="fa-solid ${flow.icon}"></i>
+            <div>
+              <div class="flow-title">${flow.name}</div>
+              <div style="color:var(--muted);font-size:0.85rem">${ACTIVE_TAB} • ${flow.tags.join(', ')}</div>
+            </div>
+          </div>
+          <div class="flow-meta">
+            <div id="status-${flow.id}" class="status ${statusToClass(parent.key)}">${parent.label}</div>
+            <div style="margin-left:auto;color:var(--muted);font-weight:700">${flow.id}</div>
+          </div>
+        `;
+
+        // attach diagram and actions
+        card.appendChild(diag);
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+        actions.innerHTML = `
+          <button class="small" onclick="showDetail('${flow.id}')"><i class="fa-solid fa-eye"></i> View</button>
+          <button class="small" onclick="copyFlow('${flow.id}')"><i class="fa-solid fa-copy"></i> Copy</button>
+          <button class="small" onclick="exportSingle('${flow.id}')"><i class="fa-solid fa-file-csv"></i> Export</button>
+        `;
+        card.appendChild(actions);
+
+        flowsArea.appendChild(card);
+      });
+
+      visibleCountEl.innerText = filtered.length;
+    }
+
+    /* Helpers for actions */
+    function showDetail(id){
+      for(const cat of categories){
+        const f = DATA[cat].find(x=>x.id===id);
+        if(f){
+          const statuses = getSubstepStatuses(f);
+          const parent = computeParentFromSubsteps(statuses);
+          alert(`${f.name}\n\nCategory: ${cat}\nStatus: ${parent.label} (derived)\nTags: ${f.tags.join(', ')}\n\nSubsteps:\n- ${f.substeps.map((s,i)=>`${s} [${statuses[i]}]`).join('\n- ')}\n\n(Use Export CSV to get data.)`);
+          return;
+        }
+      }
+    }
+
+    function copyFlow(id){
+      for(const cat of categories){
+        const f = DATA[cat].find(x=>x.id===id);
+        if(f){
+          const statuses = getSubstepStatuses(f);
+          const txt = `${f.name}\nCategory: ${cat}\nStatus (derived): ${computeParentFromSubsteps(statuses).label}\n\nSubsteps:\n${f.substeps.map((s,i)=>'• '+s+' ['+statuses[i]+']').join('\n')}`;
+          navigator.clipboard?.writeText(txt).then(()=> alert('Flow copied to clipboard'), ()=> alert('Copy failed'));
+          return;
+        }
+      }
+    }
+
+    function exportSingle(id){
+      for(const cat of categories){
+        const f = DATA[cat].find(x=>x.id===id);
+        if(f){
+          const statuses = getSubstepStatuses(f);
+          const csv = flowToCsv([f], cat, statuses);
+          downloadBlob(csv, `${id}.csv`, 'text/csv');
+          return;
+        }
+      }
+    }
+
+    function flowToCsv(flows, category, statusesMap){
+      const lines = [['id','category','name','status','tags','substeps','substep_statuses']];
+      flows.forEach(f => {
+        const statuses = statusesMap || getSubstepStatuses(f);
+        lines.push([f.id, category, f.name, f.status, f.tags.join('|'), f.substeps.join(' | '), statuses.join('|')]);
+      });
+      return lines.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    }
+
+    function downloadBlob(text, filename, type){
+      const blob = new Blob([text], {type});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      setTimeout(()=>{ URL.revokeObjectURL(url); a.remove() }, 500);
+    }
+
+    /* Export visible flows (all flows in current tab filtered) */
+    exportCsvBtn.onclick = () => {
+      const raw = DATA[ACTIVE_TAB] || [];
+      const q = pageState.search.trim().toLowerCase();
+      const filtered = raw.filter(flow => {
+        if(pageState.status !== 'all' && flow.status !== pageState.status) return false;
+        if(pageState.service !== 'all') {
+          const sLower = pageState.service.toLowerCase();
+          const inCategory = ACTIVE_TAB.toLowerCase().includes(sLower);
+          const inTags = (flow.tags || []).some(t => t.toLowerCase().includes(sLower));
+          if(!inCategory && !inTags) return false;
+        }
+        if(q) {
+          const hay = (flow.name + ' ' + flow.substeps.join(' ') + ' ' + (flow.tags||[]).join(' ')).toLowerCase();
+          if(!hay.includes(q)) return false;
+        }
+        return true;
+      });
+      if(filtered.length === 0){ alert('No visible flows to export.'); return; }
+      // attach derived statuses for each flow
+      const combinedCsvLines = [['id','category','name','derived_parent_status','tags','substeps','substep_statuses']];
+      filtered.forEach(f => {
+        const statuses = getSubstepStatuses(f);
+        const parent = computeParentFromSubsteps(statuses);
+        combinedCsvLines.push([f.id, ACTIVE_TAB, f.name, parent.label, f.tags.join('|'), f.substeps.join(' | '), statuses.join('|')]);
+      });
+      const csv = combinedCsvLines.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+      downloadBlob(csv, `${ACTIVE_TAB.replace(/\s+/g,'_')}_flows.csv`, 'text/csv');
+    };
+
+    /* Search & filters */
+    searchInput.addEventListener('input', e => {
+      pageState.search = e.target.value; renderFlows();
+    });
+    clearSearchBtn.onclick = () => { searchInput.value=''; pageState.search=''; renderFlows(); }
+    statusFilter.addEventListener('change', e => { pageState.status = e.target.value; renderFlows(); });
+    serviceFilter.addEventListener('change', e => { pageState.service = e.target.value; renderFlows(); });
+
+    /* highlight sidebar item */
+    function highlightSidebar(cat){
+      const list = Array.from(document.querySelectorAll('.hier-item'));
+      list.forEach(node => {
+        if(node.innerText.trim().startsWith(cat)){
+          node.scrollIntoView({behavior:'smooth',block:'center'});
+        }
+      });
+    }
+
+    /* escape html for substeps */
+    function escapeHtml(s){ return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+
+    /* Init */
+    renderTabs();
+    renderSidebar();
+    populateServiceFilter();
+    renderFlows();
+
+</script>
+</body>
+</html>

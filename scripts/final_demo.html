@@ -70,7 +70,7 @@
         .status-label { font-size:14px; color: rgba(255,255,255,0.9); }
 
         .mermaid {
-          padding: 25px;
+          padding: 28px;
           margin: 0 15px;
           border-radius: 20px;
           background: rgba(255,255,255,0.07);
@@ -78,7 +78,18 @@
           box-shadow: 0 8px 35px rgba(0,0,0,0.45);
           backdrop-filter: blur(35px) saturate(150%);
           transform-style: preserve-3d;
+          min-height: 140px;
         }
+
+        /* Ensure mermaid-generated SVG fills container and text scales up */
+        .mermaid svg { width: 100% !important; height: auto !important; }
+        .mermaid svg g { transform-origin: 0 0; }
+        /* Force larger font inside SVG and foreignObject HTML labels so text is readable */
+        .mermaid svg text { font-size: 18px !important; }
+        .mermaid svg .label { font-size: 18px !important; }
+        /* For htmlLabels rendered inside foreignObject - apply font and color */
+        .mermaid svg foreignObject, .mermaid svg foreignObject body, .mermaid svg foreignObject div { font-size:16px !important; font-family: 'Poppins', Inter, Arial, sans-serif !important; color: #fff !important; }
+        .mermaid svg foreignObject .nodeLabel { font-size:16px !important; }
 
         .node rect {
           rx: 14px; ry: 14px;
@@ -94,11 +105,11 @@
         .node.skipped rect { fill: rgba(241,196,15,0.18) !important; stroke: rgba(241,196,15,0.55) !important; }
         .node.notexecuted rect { fill: rgba(149,165,166,0.18) !important; stroke: rgba(149,165,166,0.55) !important; }
 
-        .node text { fill:#fff; font-size:14px; text-shadow:0 0 3px rgba(0,0,0,0.5); }
+        /* larger, readable node text */
+        .node text, .mermaid .label { fill:#fff; font-size:16px !important; text-shadow:0 0 3px rgba(0,0,0,0.5); }
+        .nodeLabel span.substep { display: block; font-size: 13px; color: rgba(255,255,255,0.88); margin-left: 2px; }
 
-        .nodeLabel span.substep { display: block; font-size: 12px; color: rgba(255,255,255,0.85); margin-left: 2px; }
-
-        .edgePath path { stroke-width: 2.5px; stroke: url(#gradientStroke); filter: drop-shadow(0 3px 12px rgba(0,0,0,0.5)); }
+        .edgePath path { stroke-width: 3px; stroke: url(#gradientStroke); filter: drop-shadow(0 3px 12px rgba(0,0,0,0.5)); }
 
         footer {
           text-align:center; padding:25px; font-size:14px;
@@ -146,7 +157,7 @@
     import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
 
     // mermaid global initialization
-    mermaid.initialize({ startOnLoad: false, theme: 'dark', themeVariables: { fontFamily: 'Poppins, Inter, Arial, sans-serif' }, flowchart: { curve: 'basis', htmlLabels: true } });
+    mermaid.initialize({ startOnLoad: false, theme: 'dark', themeVariables: { fontFamily: 'Poppins, Inter, Arial, sans-serif', fontSize: '18px' }, flowchart: { curve: 'basis', htmlLabels: true } });
 
     // helpers
     const escapeHtml = unsafe => { if(unsafe===0) return '0'; if(!unsafe) return ''; return String(unsafe).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); };
